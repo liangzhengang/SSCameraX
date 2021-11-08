@@ -2,12 +2,11 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
 android {
-    compileSdk 30
-
+    compileSdkVersion 31
     defaultConfig {
         applicationId "com.compose.senssunai"
-        minSdk 23
-        targetSdk 27
+        minSdkVersion 23
+        targetSdkVersion 31
         versionCode 1
         versionName "1.0"
 
