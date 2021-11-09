@@ -11,12 +11,14 @@ buildscript {
         // in the individual module build.gradle files
     }
 }
-repositories {
-    google()
-    jcenter() // Warning: this repository is going to shut down soon
-    mavenCentral()
-//        maven { url 'http://maven.aliyun.com/nexus/content/groups/public/' }
-    maven { url "https://jitpack.io" }
+allprojects {
+    repositories {
+        google()
+        maven { url 'http://maven.aliyun.com/nexus/content/groups/public/' }
+        maven { url "https://jitpack.io" }
+        jcenter()
+
+    }
 }
 task clean(type: Delete) {
     delete rootProject.buildDir
