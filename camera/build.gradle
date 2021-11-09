@@ -38,14 +38,14 @@ dependencies {
 
     // CameraX core library
     def camerax_version = '1.1.0-alpha07'
-    implementation "androidx.camera:camera-core:$camerax_version"
+    api "androidx.camera:camera-core:$camerax_version"
 
     // CameraX Camera2 extensions
-    implementation "androidx.camera:camera-camera2:$camerax_version"
+    api "androidx.camera:camera-camera2:$camerax_version"
 
     // CameraX Lifecycle library
-    implementation "androidx.camera:camera-lifecycle:$camerax_version"
+    api "androidx.camera:camera-lifecycle:$camerax_version"
 
     // CameraX View class
-    implementation 'androidx.camera:camera-view:1.0.0-alpha27'
+    api 'androidx.camera:camera-view:1.0.0-alpha27'
 }
