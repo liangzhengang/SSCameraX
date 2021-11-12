@@ -29,6 +29,7 @@ android {
 }
 
 dependencies {
+    api files('libs/ksoap2-android-assembly-3.6.3-jar-with-dependencies.jar')
     compileOnly 'androidx.appcompat:appcompat:1.3.1'
     // CameraX core library
     def camerax_version = '1.1.0-alpha07'

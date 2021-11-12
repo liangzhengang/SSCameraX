@@ -3,31 +3,24 @@ package com.compose.senssunai;
 import android.Manifest;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.os.Bundle;
-import android.util.Base64;
 import android.util.Log;
+import android.view.Surface;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.camera.core.CameraSelector;
-import androidx.camera.core.ImageCapture;
+import androidx.camera.core.AspectRatio;
 import androidx.camera.core.ImageCaptureException;
 import androidx.camera.core.ImageProxy;
-import androidx.camera.lifecycle.ProcessCameraProvider;
+import androidx.camera.view.PreviewView;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import com.permissionx.guolindev.PermissionX;
 import com.permissionx.guolindev.callback.ExplainReasonCallback;
 import com.permissionx.guolindev.request.ExplainScope;
-import com.qw.photo.CoCo;
-import com.qw.photo.callback.CoCoCallBack;
-import com.qw.photo.callback.TakeCallBack;
-import com.qw.photo.constant.Face;
-import com.qw.photo.pojo.TakeResult;
+import com.senssun.camera.CameraBuilder;
 import com.senssun.camera.SSCameraX;
 import com.senssun.camera.TakeCallback;
 import com.trechina.freshgoodsdistinguishsdk.FreshGoodsManager;
@@ -36,40 +29,23 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 import me.jessyan.autosize.AutoSizeCompat;
 
 public class MainActivity extends AppCompatActivity {
     FreshGoodsManager freshGoodsManager;
     ImageView img;
-    ImageCapture imageCapture;
-    YuvToRgbConverter converter;
-    Executor cameraExecutor = Executors.newSingleThreadExecutor();
+    private static final String TAG = "MainActivity";
+    String imageData;
+    Bitmap bitmap;
+
+    StringBuffer sid;
+    CameraBuilder cameraBuilder;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        converter = new YuvToRgbConverter(this);
-        imageCapture = new ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY).build();
-        ListenableFuture<ProcessCameraProvider> providerListenableFuture = ProcessCameraProvider.getInstance(this);
-        ProcessCameraProvider processCameraProvider = null;
-        try {
-            processCameraProvider = providerListenableFuture.get();
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        processCameraProvider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, imageCapture);
-
         setContentView(R.layout.activity_main);
         Button btnLearn = findViewById(R.id.btn1);
         Button btnInit = findViewById(R.id.btn2);
@@ -77,135 +53,24 @@ public class MainActivity extends AppCompatActivity {
         Button btnPhoto = findViewById(R.id.btn4);
         EditText etID = findViewById(R.id.et_id);
         EditText etName = findViewById(R.id.et_content);
+        PreviewView previewView = findViewById(R.id.view_finder);
         img = findViewById(R.id.img);
-
         requestPermission();
-
         freshGoodsManager = new FreshGoodsManager(MainActivity.this);
         btnLearn.setOnClickListener(v -> {
-            CoCo.with(MainActivity.this).take(createFile()).cameraFace(Face.FRONT).callBack(new TakeCallBack() {
-                @Override
-                public void onFinish(TakeResult takeResult) {
-
-                }
-
-                @Override
-                public void onCancel() {
-
-                }
-
-                @Override
-                public void onStart() {
-
-                }
-            }).start(new CoCoCallBack<TakeResult>() {
-                @Override
-                public void onSuccess(TakeResult takeResult) {
-
-                    if (sid == null)
-                        return;
-                    runWork(new Runnable() {
-                        @Override
-                        public void run() {
-
-                            int ret = freshGoodsManager.RetailBot_Api_SelectAndUpload(sid.toString(), etID.getText().toString(), "10", "false", etName.getText().toString(), bitmap);
-                            Log.i(TAG, "RetailBot_Api_SelectAndUpload ret:" + ret);
-                        }
-                    });
-                }
-
-                @Override
-                public void onFailed(Exception e) {
-
-                }
+            runWork(() -> {
+                int ret = freshGoodsManager.RetailBot_Api_SelectAndUpload(sid.toString(), etID.getText().toString(), "10", "false", etName.getText().toString(), bitmap);
+                Log.i(TAG, "RetailBot_Api_SelectAndUpload ret:" + ret);
             });
-
         });
         btnInit.setOnClickListener(v -> initAI());
         btnUInit.setOnClickListener(v -> unInit());
-
-
         // 拍摄
-//        androidx.camera.view.CameraView mVideoView;
         btnPhoto.setOnClickListener(v ->
-//                // 修复了前置摄像头拍照后  预览左右镜像的问题
-//                Integer lensFacing = mVideoView.getCameraLensFacing();
-//         if (lensFacing == null) {
-//            lensFacing = CameraSelector.LENS_FACING_BACK;
-//        }
-//        ImageCapture.OutputFileOptions.Builder outputFileOptions = new ImageCapture.OutputFileOptions.Builder(photoFile = initTakePicPath(mContext));
-//        ImageCapture.Metadata metadata = new ImageCapture.Metadata();
-//        metadata.setReversedHorizontal(CameraSelector.LENS_FACING_FRONT == lensFacing);
-//        outputFileOptions.setMetadata(metadata)
-                        takePhoto()
-//                        imageCapture.takePicture(cameraExecutor, new ImageCapture.OnImageCapturedCallback() {
-//                            @Override
-//                            public void onCaptureSuccess(@NonNull ImageProxy image) {
-//                                super.onCaptureSuccess(image);
-////                                Bitmap bmSrc = BitmapFactory.decodeFile(createFile().getAbsolutePath());
-////                                Bitmap bmCopy = Bitmap.createBitmap(bmSrc.getWidth(), bmSrc.getHeight(), bmSrc.getConfig());
-//                                Bitmap bm = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
-//                                ByteBuffer buffer = image.getPlanes()[0].getBuffer();
-//                                byte[] bytes = new byte[buffer.capacity()];
-//                                buffer.get(bytes);
-//                                Bitmap bitmapImage = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, null);
-//
-////                                converter.yuvToRgb(image.getImage(), bm);
-//
-//                                runOnUiThread(new Runnable() {
-//                                    @Override
-//                                    public void run() {
-//                                        img.setImageBitmap(bitmapImage);
-//                                        image.close();
-//                                    }
-//                                });
-//
-//                            }
-//
-//                            @Override
-//                            public void onError(@NonNull ImageCaptureException exception) {
-//                                super.onError(exception);
-//                                Log.i(TAG, "onError" + exception.getMessage());
-//                            }
-//                        })
-
-
-//                CoCo.with(MainActivity.this).take(createFile())
-//                .cameraFace(Face.FRONT).callBack(new TakeCallBack() {
-//                    @Override
-//                    public void onFinish(TakeResult takeResult) {
-//
-//                    }
-//
-//                    @Override
-//                    public void onCancel() {
-//
-//                    }
-//
-//                    @Override
-//                    public void onStart() {
-//
-//                    }
-//                }).start(new CoCoCallBack<TakeResult>() {
-//                    @Override
-//                    public void onSuccess(TakeResult takeResult) {
-//                        bitmap = Utils.INSTANCE.getBitmapFromFile(takeResult.getSavedFile().getPath());
-//                        img.setImageBitmap(bitmap);
-//
-//                        new Thread(new Runnable() {
-//                            @Override
-//                            public void run() {
-//                                recognition();
-//                            }
-//                        }).start();
-//                    }
-//
-//                    @Override
-//                    public void onFailed(Exception e) {
-//
-//                    }
-//             })
+                takePhoto()
         );
+        cameraBuilder = SSCameraX.with(null, this).setTargetRotation(Surface.ROTATION_90).setTargetAspectRatio(AspectRatio.RATIO_16_9).bind();
+        cameraBuilder.setPreview(previewView);
     }
 
 
@@ -224,13 +89,16 @@ public class MainActivity extends AppCompatActivity {
 
 
     void takePhoto() {
-        SSCameraX.takePhoto(null, this).callback(new TakeCallback() {
+        cameraBuilder.callback(new TakeCallback() {
             @Override
-            public void onSuccess(@NonNull Bitmap bitmap, @NonNull ImageProxy image) {
+            public void onSuccess(@NonNull Bitmap bit, @NonNull ImageProxy image) {
                 runOnUiThread(() -> {
-                    img.setImageBitmap(bitmap);
+                    img.setImageBitmap(bit);
+                    bitmap = bit;
+                    runWork(() -> recognition());
                     image.close();
                 });
+
             }
 
             @Override
@@ -240,23 +108,12 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
-    File createFile() {
-        try {
-            return File.createTempFile(
-                    "JPEG__demo", /* prefix */
-                    ".jpg", /* suffix */
-                    getCacheDir()/* directory */
-            );
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    void unInit() {
+    // 解绑
+    private void unInit() {
         freshGoodsManager.RetailBot_Api_ModelUnInit();
     }
 
+    // 绑定
     private void initAI() {
         String companyID = "t2yW+tjkQ/IKK2U1tZVidw==";
         JSONObject keyInfo = new JSONObject();
@@ -267,8 +124,6 @@ public class MainActivity extends AppCompatActivity {
         } catch (JSONException e) {
             e.printStackTrace();
         }
-
-
         String path = getCacheDir() + "/cache";
         File file = new File(path);
         if (!file.exists()) {
@@ -278,19 +133,6 @@ public class MainActivity extends AppCompatActivity {
         freshGoodsManager.RetailBot_Api_ModelInit(companyID, keyInfo.toString(), path);
     }
 
-    //    void createFile(){
-//        String path = getCacheDir() + "/cache";
-//        File file = new File(path);
-//        if (!file.exists()) {
-//            file.mkdirs();
-//        }
-//        File picture=new File(path,"cache.jpg");
-//    }
-    private static final String TAG = "MainActivity";
-    String imageData;
-    Bitmap bitmap;
-
-    StringBuffer sid;
 
     void recognition() {
         if (bitmap != null) {
@@ -321,34 +163,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void onDecodeClicked(String data) {
-        byte[] decode = Base64.decode(data, Base64.DEFAULT);
-        Bitmap bitmap = BitmapFactory.decodeByteArray(decode, 0, decode.length);
-        //save to image on sdcard
-        img.setImageBitmap(bitmap);
-//        saveBitmap(bitmap);
-    }
-
-    private void saveBitmap(Bitmap bitmap) {
-        try {
-            String path = getCacheDir()
-                    + "/decodeImage.jpg";
-//            Log.d("linc","path is "+path);
-            OutputStream stream = new FileOutputStream(path);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream);
-            stream.close();
-//            Log.e("linc","jpg okay!");
-        } catch (IOException e) {
-            e.printStackTrace();
-//            Log.e("linc","failed: "+e.getMessage());
-        }
-    }
 
     @Override
     public Resources getResources() {
         //需要升级到 v1.1.2 及以上版本才能使用 AutoSizeCompat
 //        AutoSizeCompat.autoConvertDensityOfGlobal(super.getResources()); //如果没有自定义需求用这个方法
-        AutoSizeCompat.autoConvertDensity(super.getResources(), 1024, true); //如果有自定义需求就用这个方法
+        AutoSizeCompat.autoConvertDensity(super.getResources(), 512, true); //如果有自定义需求就用这个方法
         return super.getResources();
     }
 

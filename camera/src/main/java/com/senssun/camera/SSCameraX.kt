@@ -5,5 +5,5 @@ import androidx.fragment.app.Fragment
 
 object SSCameraX {
     @JvmStatic
-    fun takePhoto(fragment:Fragment?=null,activity: AppCompatActivity?=null) = CameraBuilder(fragment,activity)
+    fun with(fragment:Fragment?=null, activity: AppCompatActivity?=null) = CameraBuilder(fragment,activity)
 }
