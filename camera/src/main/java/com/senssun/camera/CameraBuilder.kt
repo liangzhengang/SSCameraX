@@ -94,7 +94,7 @@ class CameraBuilder(val fragment: Fragment?, val activity: AppCompatActivity?) {
             val lensFacing = when {
                 hasBackCamera() -> CameraSelector.LENS_FACING_BACK
                 hasFrontCamera() -> CameraSelector.LENS_FACING_FRONT
-                else -> throw IllegalStateException("Back and front camera are unavailable")
+                else -> CameraSelector.LENS_FACING_FRONT
             }
             // CameraSelector
             cameraSelector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
@@ -123,7 +123,7 @@ class CameraBuilder(val fragment: Fragment?, val activity: AppCompatActivity?) {
             if (preview == null) {
                 camera = cameraProvider.bindToLifecycle(
                     fragment ?: activity!!,
-                    cameraSelector ?: CameraSelector.DEFAULT_FRONT_CAMERA,
+                    cameraSelector ?: CameraSelector.DEFAULT_FRONT_CAMERA, imageCapture
                 )
             } else {
                 camera = cameraProvider.bindToLifecycle(
