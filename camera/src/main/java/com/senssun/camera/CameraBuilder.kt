@@ -51,6 +51,10 @@ class CameraBuilder(val fragment: Fragment?, val activity: AppCompatActivity?) {
         preview?.setSurfaceProvider(previewView.getSurfaceProvider())
     }
 
+    fun setCamera(cameraSelector: CameraSelector) {
+        this.cameraSelector = cameraSelector
+    }
+
     fun start() {
         imageCapture.takePicture(executors, object : ImageCapture.OnImageCapturedCallback() {
             override fun onCaptureSuccess(image: ImageProxy) {
@@ -74,7 +78,7 @@ class CameraBuilder(val fragment: Fragment?, val activity: AppCompatActivity?) {
     private var camera: Camera? = null
     private lateinit var cameraProvider: ProcessCameraProvider
 
-
+    private var cameraSelector: CameraSelector? = null
     fun bind(): CameraBuilder {
         val cameraProviderFuture =
             ProcessCameraProvider.getInstance(fragment?.requireContext() ?: activity!!)
@@ -82,9 +86,11 @@ class CameraBuilder(val fragment: Fragment?, val activity: AppCompatActivity?) {
         cameraProviderFuture.addListener(Runnable {
             // CameraProvider
             // Select lensFacing depending on the available cameras
-            val lensFacing = when {
-                hasBackCamera() -> CameraSelector.LENS_FACING_BACK
-                hasFrontCamera() -> CameraSelector.LENS_FACING_FRONT
+
+
+            cameraSelector = when {
+                hasBackCamera() -> CameraSelector.DEFAULT_BACK_CAMERA
+                hasFrontCamera() -> CameraSelector.DEFAULT_FRONT_CAMERA
                 else -> throw IllegalStateException("Back and front camera are unavailable")
             }
 
@@ -104,7 +110,10 @@ class CameraBuilder(val fragment: Fragment?, val activity: AppCompatActivity?) {
             // A variable number of use-cases can be passed here -
             // camera provides access to CameraControl & CameraInfo
             camera = cameraProvider.bindToLifecycle(
-                fragment ?: activity!!, CameraSelector.DEFAULT_BACK_CAMERA, imageCapture, preview
+                fragment ?: activity!!,
+                cameraSelector ?: CameraSelector.DEFAULT_FRONT_CAMERA,
+                imageCapture,
+                preview
             )
 
             // Attach the viewfinder's surface provider to preview use case
