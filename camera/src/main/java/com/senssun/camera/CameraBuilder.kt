@@ -13,6 +13,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import com.google.common.util.concurrent.ListenableFuture
 import java.util.concurrent.Executors
 
 class CameraBuilder(val fragment: Fragment?, val activity: AppCompatActivity?) {
@@ -22,6 +23,13 @@ class CameraBuilder(val fragment: Fragment?, val activity: AppCompatActivity?) {
     private var takeCallback: TakeCallback? = null
     private var rotation = Surface.ROTATION_0
     private var ratio = RATIO_4_3
+
+    private val executors = Executors.newSingleThreadExecutor()
+    private var camera: Camera? = null
+    private lateinit var cameraProvider: ProcessCameraProvider
+
+    private var cameraSelector: CameraSelector? = null
+
 
     fun callback(callback: TakeCallback): CameraBuilder {
         takeCallback = callback
@@ -48,6 +56,7 @@ class CameraBuilder(val fragment: Fragment?, val activity: AppCompatActivity?) {
     private var preview: Preview? = null
 
     fun setPreview(previewView: PreviewView) {
+        preview = Preview.Builder().setTargetAspectRatio(ratio).setTargetRotation(rotation).build()
         preview?.setSurfaceProvider(previewView.getSurfaceProvider())
     }
 
@@ -74,11 +83,6 @@ class CameraBuilder(val fragment: Fragment?, val activity: AppCompatActivity?) {
         })
     }
 
-    private val executors = Executors.newSingleThreadExecutor()
-    private var camera: Camera? = null
-    private lateinit var cameraProvider: ProcessCameraProvider
-
-    private var cameraSelector: CameraSelector? = null
     fun bind(): CameraBuilder {
         val cameraProviderFuture =
             ProcessCameraProvider.getInstance(fragment?.requireContext() ?: activity!!)
@@ -86,42 +90,55 @@ class CameraBuilder(val fragment: Fragment?, val activity: AppCompatActivity?) {
         cameraProviderFuture.addListener(Runnable {
             // CameraProvider
             // Select lensFacing depending on the available cameras
-
-
-            cameraSelector = when {
-                hasBackCamera() -> CameraSelector.DEFAULT_BACK_CAMERA
-                hasFrontCamera() -> CameraSelector.DEFAULT_FRONT_CAMERA
+            cameraProvider = cameraProviderFuture.get()
+            val lensFacing = when {
+                hasBackCamera() -> CameraSelector.LENS_FACING_BACK
+                hasFrontCamera() -> CameraSelector.LENS_FACING_FRONT
                 else -> throw IllegalStateException("Back and front camera are unavailable")
             }
+            // CameraSelector
+            cameraSelector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
+            bindCamera()
 
-            // Enable or disable switching between cameras
-//            updateCameraSwitchButton()
-
-            // Build and bind the camera use cases
-//            bindCameraUseCases()
         }, ContextCompat.getMainExecutor(fragment?.requireContext() ?: activity!!))
-        cameraProvider = cameraProviderFuture.get()
+        return this
+    }
+
+    fun bindCamera() {
+
         cameraProvider.unbindAll()
-        preview = Preview.Builder().setTargetAspectRatio(ratio).setTargetRotation(rotation).build()
+
         imageCapture =
-            ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
-                .setTargetRotation(rotation).setTargetAspectRatio(ratio).build()
+            ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                .setIoExecutor(executors)
+                // We request aspect ratio but no resolution to match preview config, but letting
+                // CameraX optimize for whatever specific resolution best fits our use cases
+                .setTargetAspectRatio(ratio)
+                // Set initial target rotation, we will have to call this again if rotation changes
+                // during the lifecycle of this use case
+                .setTargetRotation(rotation).build()
         try {
             // A variable number of use-cases can be passed here -
             // camera provides access to CameraControl & CameraInfo
-            camera = cameraProvider.bindToLifecycle(
-                fragment ?: activity!!,
-                cameraSelector ?: CameraSelector.DEFAULT_FRONT_CAMERA,
-                imageCapture,
-                preview
-            )
+            if (preview == null) {
+                camera = cameraProvider.bindToLifecycle(
+                    fragment ?: activity!!,
+                    cameraSelector ?: CameraSelector.DEFAULT_FRONT_CAMERA,
+                )
+            } else {
+                camera = cameraProvider.bindToLifecycle(
+                    fragment ?: activity!!,
+                    cameraSelector ?: CameraSelector.DEFAULT_FRONT_CAMERA,
+                    imageCapture, preview
+                )
+            }
+
 
             // Attach the viewfinder's surface provider to preview use case
 
         } catch (exc: Exception) {
-//            Log.e(TAG, "Use case binding failed", exc)
+            exc.printStackTrace()
         }
-        return this
     }
 
 

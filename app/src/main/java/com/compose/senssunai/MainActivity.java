@@ -69,8 +69,14 @@ public class MainActivity extends AppCompatActivity {
         btnPhoto.setOnClickListener(v ->
                 takePhoto()
         );
-        cameraBuilder = SSCameraX.with(null, this).setTargetRotation(Surface.ROTATION_90).setTargetAspectRatio(AspectRatio.RATIO_16_9).bind();
-        cameraBuilder.setPreview(previewView);
+        previewView.post(new Runnable() {
+            @Override
+            public void run() {
+                cameraBuilder = SSCameraX.with(null, this).setTargetRotation(Surface.ROTATION_90).setTargetAspectRatio(AspectRatio.RATIO_16_9).bind();
+                cameraBuilder.setPreview(previewView);
+            }
+        });
+
     }
 
 
@@ -168,7 +174,7 @@ public class MainActivity extends AppCompatActivity {
     public Resources getResources() {
         //需要升级到 v1.1.2 及以上版本才能使用 AutoSizeCompat
 //        AutoSizeCompat.autoConvertDensityOfGlobal(super.getResources()); //如果没有自定义需求用这个方法
-        AutoSizeCompat.autoConvertDensity(super.getResources(), 512, true); //如果有自定义需求就用这个方法
+        AutoSizeCompat.autoConvertDensity(super.getResources(), 1024, true); //如果有自定义需求就用这个方法
         return super.getResources();
     }
 
