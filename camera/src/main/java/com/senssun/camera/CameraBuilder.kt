@@ -123,8 +123,7 @@ class CameraBuilder(val fragment: Fragment?, val activity: AppCompatActivity?) {
             if (preview == null) {
                 camera = cameraProvider.bindToLifecycle(
                     fragment ?: activity!!,
-                    cameraSelector ?: CameraSelector.DEFAULT_FRONT_CAMERA,
-                )
+                    cameraSelector ?: CameraSelector.DEFAULT_FRONT_CAMERA,imageCapture)
             } else {
                 camera = cameraProvider.bindToLifecycle(
                     fragment ?: activity!!,
